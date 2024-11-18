@@ -9,13 +9,18 @@ def main():
     args = parser.parse_args()
     robot = Robot()
     if args.test:
-        # robot.test()
-        pass
+        try:
+            print("Testing Hardware...")
+            Robot.test_hardware()
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt")
+        finally:
+            robot.cleanup()
     else:
         try:
+            print("Running Robot...")
             robot.run()
         except KeyboardInterrupt:
             print("KeyboardInterrupt")
-            robot.cleanup()
         finally:
             robot.cleanup()

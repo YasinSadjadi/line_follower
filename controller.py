@@ -5,89 +5,95 @@ from flags import SteeringFlags
 
 class Controller:
     # initializing motors
-    _left_motor = io.Motor(8, 10, 11)
-    _right_motor = io.Motor(29, 31, 33)
-    _steer = io.Steer(32)
+    _LEFT_MOTOR = io.Motor(8, 10, 11)
+    _RIGHT_MOTOR = io.Motor(29, 31, 33)
+    _SERVO = io.Steer(32)
 
-    # values
+    # values for mapping speed and steer angle
+    _MIN_SPEED = 30
     _MAX_SPEED = 100
-    _MIN_SPEED = 50
-    _MAX_STEER = 120
-    _MIN_STEER = 60
+
+    _MIN_STEER_ANGLE = 60
+    _MAX_STEER_ANGLE = 120
 
     @staticmethod
     def adjust_steer(steer_value):
         if steer_value == SteeringFlags.STRAIGHT:
-            Controller._steer.set_angle(90)
-            Controller.set_forward(True, True)
+            Controller._SERVO.set_angle(90)
             Controller.set_speed(left_speed=Controller._MAX_SPEED,
                                  right_speed=Controller._MAX_SPEED)
 
         elif steer_value == SteeringFlags.SLOW_RIGHT:
-            Controller._steer.set_angle(100)
-            Controller.set_forward(True, True)
-            Controller.set_speed(left_speed=Controller._MAX_SPEED,
-                                 right_speed=Controller._MIN_SPEED)
+            Controller._SERVO.set_angle(100)
+            Controller.set_speed(left_speed=Controller._MAX_SPEED, right_speed=Controller._MIN_SPEED)
 
         elif steer_value == SteeringFlags.FAST_RIGHT:
-            Controller._steer.set_angle(Controller._MAX_STEER)
-            Controller.set_forward(True, False)
-            Controller.set_speed(left_speed=Controller._MAX_SPEED,
-                                 right_speed=Controller._MIN_SPEED)
+            Controller._SERVO.set_angle(Controller._MAX_STEER_ANGLE)
+            Controller.set_speed(left_speed=Controller._MAX_SPEED, right_speed=- Controller._MIN_SPEED)
 
         elif steer_value == SteeringFlags.SLOW_LEFT:
-            Controller._steer.set_angle(80)
-            Controller.set_forward(True, True)
-            Controller.set_speed(left_speed=Controller._MIN_SPEED,
-                                 right_speed=Controller._MAX_SPEED)
-
+            Controller._SERVO.set_angle(80)
+            Controller.set_speed(left_speed=Controller._MIN_SPEED, right_speed=Controller._MAX_SPEED)
         elif steer_value == SteeringFlags.FAST_LEFT:
-            Controller._steer.set_angle(Controller._MIN_STEER)
-            Controller.set_forward(False, True)
-            Controller.set_speed(left_speed=Controller._MAX_SPEED,
-                                 right_speed=Controller._MIN_SPEED)
+            Controller._SERVO.set_angle(Controller._MIN_STEER_ANGLE)
+            Controller.set_speed(left_speed=- Controller._MIN_SPEED, right_speed=Controller._MAX_SPEED)
 
         elif steer_value == SteeringFlags.REVERSE:
-            Controller._steer.set_angle(90)
-            Controller.set_forward(False, False)
-            Controller.set_speed(left_speed=Controller._MIN_SPEED,
-                                 right_speed=Controller._MIN_SPEED)
+            Controller._SERVO.set_angle(90)
+            Controller.set_speed(left_speed=- Controller._MAX_SPEED, right_speed=- Controller._MAX_SPEED)
         else:
             print("Invalid steering value")
 
     @staticmethod
+    def _map_value(value, in_min, in_max, out_min, out_max):
+        return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+
+    @staticmethod
+    def _constrain_value(value, min_value, max_value):
+        return max(min_value, min(value, max_value))
+
+    @staticmethod
     def stop():
-        Controller._left_motor.stop()
-        Controller._right_motor.stop()
+        Controller._LEFT_MOTOR.stop()
+        Controller._RIGHT_MOTOR.stop()
 
     @staticmethod
     def set_speed(left_speed, right_speed):
-        Controller._left_motor.set_speed(left_speed)
-        Controller._right_motor.set_speed(right_speed)
+        if left_speed < 0:
+            left_speed = -left_speed
+            if not Controller._LEFT_MOTOR.backward_flag:
+                Controller._LEFT_MOTOR.backward()
+        else:
+            if not Controller._LEFT_MOTOR.forward_flag:
+                Controller._LEFT_MOTOR.forward()
+
+        if right_speed < 0:
+            right_speed = -right_speed
+            if not Controller._RIGHT_MOTOR.backward_flag:
+                Controller._RIGHT_MOTOR.backward()
+        else:
+            if not Controller._RIGHT_MOTOR.forward_flag:
+                Controller._RIGHT_MOTOR.forward()
+
+        left_speed = Controller._constrain_value(left_speed, Controller._MIN_SPEED, Controller._MAX_SPEED)
+        right_speed = Controller._constrain_value(right_speed, Controller._MIN_SPEED, Controller._MAX_SPEED)
+
+        # setting motor speeds
+        Controller._LEFT_MOTOR.set_speed(left_speed)
+        Controller._RIGHT_MOTOR.set_speed(right_speed)
 
     @staticmethod
-    def set_forward(left_motor: bool = True, right_motor: bool = True):
-        """
-        in this method we can set the direction of the motors
-        True means forward and False means backward
-        :param left_motor: left motor direction
-        :param right_motor: right motor direction
-        :return:
-        """
-        if left_motor:
-            Controller._left_motor.forward()
-        else:
-            Controller._left_motor.backward()
-        if right_motor:
-            Controller._right_motor.forward()
-        else:
-            Controller._right_motor.backward()
+    def set_steer_angle(steer_angle):
+        # validating input values
+        steer_angle = Controller._constrain_value(steer_angle, Controller._MIN_STEER_ANGLE,
+                                                  Controller._MAX_STEER_ANGLE)
+        Controller._SERVO.set_angle(steer_angle)
 
     @staticmethod
     def cleanup():
-        Controller._steer.set_angle(90)
+        Controller._SERVO.set_angle(90)
         Controller.stop()
-        Controller._steer.cleanup()
-        Controller._left_motor.cleanup()
-        Controller._right_motor.cleanup()
+        Controller._SERVO.cleanup()
+        Controller._LEFT_MOTOR.cleanup()
+        Controller._RIGHT_MOTOR.cleanup()
         io_interface.cleanup()
