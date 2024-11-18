@@ -1,5 +1,4 @@
 import RPi.GPIO as GPIO
-import time
 
 GPIO.setmode(GPIO.BOARD)
 
@@ -7,17 +6,17 @@ GPIO.setmode(GPIO.BOARD)
 class Steer:
     def __init__(self, servo_pin: int):
         GPIO.setup(servo_pin, GPIO.OUT)
-        self.pwm = GPIO.PWM(servo_pin, 100)
-        self.pwm.start(15)
+        self._pwm = GPIO.PWM(servo_pin, 100)
+        self._pwm.start(15)
 
     def set_angle(self, angle):
         angle = max(50, min(130, angle))
 
-        duty: float = 5 + angle / 9
-        self.pwm.ChangeDutyCycle(duty)
+        duty: float = 5.85 + angle / 9
+        self._pwm.ChangeDutyCycle(duty)
 
     def cleanup(self):
-        self.pwm.stop()
+        self._pwm.stop()
 
 
 class Motor:
